@@ -663,7 +663,7 @@ function processCSV(rawText) {
     }
   });
 
-  // Build log records
+// Build log records
   const logRecords = [];
   dataRows.forEach((row, i) => {
     if (logMessages[i].length > 0) {
@@ -677,8 +677,81 @@ function processCSV(rawText) {
     }
   });
 
+  // ─── NEW: Agrupamento / Unificação ─────────────────────────────────
+  const consolidated = new Map();
+
+  dataRows.forEach((row) => {
+    const article = String(row[6]).trim();
+    const delivery = String(row[1]).trim();
+
+    if (!consolidated.has(article)) {
+      const newRow = [...row];
+      // Converte as colunas de Quantidade (7) e Financeiras I a Z (8 a 25) para número
+      for (let c = 7; c <= 25; c++) {
+        newRow[c] = cleanNumeric(newRow[c]);
+      }
+      newRow._deliveries = new Set();
+      if (delivery && delivery.toLowerCase() !== 'nan') {
+        newRow._deliveries.add(delivery);
+      }
+      consolidated.set(article, newRow);
+    } else {
+      const existingRow = consolidated.get(article);
+      if (delivery && delivery.toLowerCase() !== 'nan') {
+        existingRow._deliveries.add(delivery);
+      }
+      // Soma a Quantidade e Valores I a Z
+      for (let c = 7; c <= 25; c++) {
+        existingRow[c] += cleanNumeric(row[c]);
+      }
+    }
+  });
+
+  // Descobrir o máximo de deliveries em um mesmo artigo para expandir o cabeçalho
+  let maxDels = 5; // Mantém no mínimo as 5 colunas padrão
+  for (const row of consolidated.values()) {
+    if (row._deliveries.size > maxDels) {
+      maxDels = row._deliveries.size;
+    }
+  }
+
+  // Expandir headers dinamicamente se maxDels > 5
+  let finalHeaders = [...headers];
+  if (maxDels > 5) {
+    const extraHeaders = [];
+    for (let d = 6; d <= maxDels; d++) {
+      extraHeaders.push(`Delivery ${d}`);
+    }
+    finalHeaders.splice(6, 0, ...extraHeaders); // Insere colunas antes de Article
+  }
+
+  // Construir as linhas finais unificadas
+  const finalDataRows = [];
+  for (const row of consolidated.values()) {
+    const dels = Array.from(row._deliveries);
+    const baseRow = [...row];
+    delete baseRow._deliveries;
+
+    // Limpar colunas de Delivery 1 a 5 (indices 1 a 5)
+    for (let i = 1; i <= 5; i++) baseRow[i] = '';
+
+    // Expandir a linha com espaços vazios empurrando as demais colunas se necessário
+    if (maxDels > 5) {
+      const emptySpaces = new Array(maxDels - 5).fill('');
+      baseRow.splice(6, 0, ...emptySpaces);
+    }
+
+    // Preencher as deliveries capturadas nas colunas correspondentes
+    for (let i = 0; i < dels.length; i++) {
+      baseRow[1 + i] = dels[i];
+    }
+
+    finalDataRows.push(baseRow);
+  }
+
   return {
-    revisedRows: [headers, ...dataRows],
+    originalHeaders: headers,
+    revisedRows: [finalHeaders, ...finalDataRows],
     logRecords,
     totalRows: dataRows.length
   };
@@ -686,14 +759,18 @@ function processCSV(rawText) {
 
 // ─── CSV builder ─────────────────────────────────────────────────────────────
 function buildCSV(rows, sep=';', decimal='.') {
+  const headers = rows[0] || [];
+  const startIdx = headers.indexOf('FOB');
+  const endIdx = headers.indexOf('Total NF');
+
   return rows.map((row, rIdx) => row.map((cell, cIdx) => {
     let v = String(cell ?? '');
 
     // Ignora o cabeçalho
     if (rIdx > 0) {
       let numVal = null;
-      // Índices 8 a 25 englobam todas as colunas de valores (FOB até Total NF)
-      let isFinancialCol = (cIdx >= 8 && cIdx <= 25);
+      // Identifica as colunas financeiras dinamicamente pelo nome
+      let isFinancialCol = (startIdx !== -1 && endIdx !== -1 && cIdx >= startIdx && cIdx <= endIdx);
 
       if (typeof cell === 'number') {
         numVal = cell;
@@ -792,7 +869,7 @@ btnRun.addEventListener('click', async () => {
     const revisedCSV = buildCSV(result.revisedRows);
     const logCSV = result.logRecords.length > 0
       ? buildCSV([
-          [result.revisedRows[0][6], result.revisedRows[0][7], 'Status_Validacao'],
+          [result.originalHeaders[6], result.originalHeaders[7], 'Status_Validacao'],
           ...result.logRecords.map(r => [r.colG, r.colH, r.status])
         ])
       : null;
@@ -808,7 +885,7 @@ btnRun.addEventListener('click', async () => {
       tableHTML = `
         <div class="log-table-wrap">
           <table class="log-table">
-            <thead><tr><th>Linha</th><th>${result.revisedRows[0][6] || 'Col G'}</th><th>${result.revisedRows[0][7] || 'Col H'}</th><th>Ocorrência</th></tr></thead>
+            <thead><tr><th>Linha</th><th>${result.originalHeaders[6] || 'Col G'}</th><th>${result.originalHeaders[7] || 'Col H'}</th><th>Ocorrência</th></tr></thead>
             <tbody>
               ${previewRows.map(r => `
                 <tr>
