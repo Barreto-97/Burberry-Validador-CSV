@@ -686,12 +686,34 @@ function processCSV(rawText) {
 
 // ─── CSV builder ─────────────────────────────────────────────────────────────
 function buildCSV(rows, sep=';', decimal='.') {
-  return rows.map(row => row.map(cell => {
+  return rows.map((row, rIdx) => row.map((cell, cIdx) => {
     let v = String(cell ?? '');
-    // Convert float dot decimals to comma for PT-BR
-    if (!isNaN(cell) && cell !== '' && typeof cell === 'number') {
-      v = cell.toFixed(2).replace('.', decimal);
+
+    // Ignora o cabeçalho
+    if (rIdx > 0) {
+      let numVal = null;
+      // Índices 8 a 25 englobam todas as colunas de valores (FOB até Total NF)
+      let isFinancialCol = (cIdx >= 8 && cIdx <= 25);
+
+      if (typeof cell === 'number') {
+        numVal = cell;
+      } else if (isFinancialCol && v !== '') {
+        // Converte as strings que vieram com vírgula para número real do JS
+        numVal = cleanNumeric(v); 
+      }
+
+      // Se for um valor válido, formata com o ponto
+      if (numVal !== null) {
+        if (isFinancialCol) {
+          // Colunas de valor sempre ganham 2 casas decimais
+          v = numVal.toFixed(2).replace('.', decimal);
+        } else {
+          // Colunas como Article ou Quantity mantêm o formato original sem adicionar .00
+          v = numVal.toString().replace('.', decimal);
+        }
+      }
     }
+
     if (v.includes(sep) || v.includes('"') || v.includes('\n')) v = `"${v.replace(/"/g,'""')}"`;
     return v;
   }).join(sep)).join('\r\n');
