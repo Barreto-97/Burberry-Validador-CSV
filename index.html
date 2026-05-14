@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Validador CSV — Burberry</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --navy-950: #050d1a;
+    --navy-900: #0a1628;
+    --navy-800: #0f2040;
+    --navy-700: #152b57;
+    --navy-600: #1d3a72;
+    --navy-500: #2a4f96;
+    --navy-400: #3b68c4;
+    --navy-300: #5e88d8;
+    --navy-200: #90b0e8;
+    --navy-100: #c8d9f4;
+    --navy-50:  #eef3fc;
+    --accent:   #3b68c4;
+    --accent-hover: #2a4f96;
+    --success:  #1a7a4a;
+    --success-bg: #e6f5ee;
+    --warning:  #b45309;
+    --warning-bg: #fef3cd;
+    --danger:   #b91c1c;
+    --danger-bg: #fde8e8;
+    --text-primary: #0a1628;
+    --text-secondary: #4a5c7a;
+    --text-muted: #8898aa;
+    --border: #d5e0f0;
+    --surface: #ffffff;
+    --bg: #f4f7fd;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --font: 'DM Sans', system-ui, sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text-primary);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── HEADER ─────────────────────────────────────── */
+  header {
+    background: var(--navy-900);
+    border-bottom: 1px solid var(--navy-700);
+    padding: 0 2rem;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo-mark {
+    width: 36px;
+    height: 36px;
+    background: var(--accent);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .logo-mark svg { width: 20px; height: 20px; fill: #fff; }
+
+  header h1 {
+    font-size: 15px;
+    font-weight: 600;
+    color: #fff;
+    letter-spacing: 0.01em;
+  }
+
+  header .subtitle {
+    font-size: 12px;
+    color: var(--navy-200);
+    font-weight: 400;
+    margin-left: 2px;
+  }
+
+  .badge-brand {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--navy-200);
+    background: var(--navy-800);
+    border: 1px solid var(--navy-600);
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+
+  /* ── MAIN ────────────────────────────────────────── */
+  main {
+    flex: 1;
+    max-width: 860px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  /* ── SECTION TITLES ─────────────────────────────── */
+  .section-label {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--navy-400);
+    margin-bottom: 10px;
+  }
+
+  /* ── UPLOAD ZONE ─────────────────────────────────── */
+  .upload-zone {
+    background: var(--surface);
+    border: 2px dashed var(--navy-200);
+    border-radius: var(--radius-lg);
+    padding: 3rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s;
+    position: relative;
+    margin-bottom: 1.5rem;
+  }
+
+  .upload-zone.dragover {
+    border-color: var(--accent);
+    background: var(--navy-50);
+  }
+
+  .upload-zone input[type="file"] {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    cursor: pointer;
+    width: 100%;
+    height: 100%;
+  }
+
+  .upload-icon {
+    width: 52px;
+    height: 52px;
+    background: var(--navy-50);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1rem;
+  }
+
+  .upload-icon svg { width: 24px; height: 24px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+
+  .upload-title { font-size: 16px; font-weight: 500; color: var(--text-primary); margin-bottom: 4px; }
+  .upload-hint  { font-size: 13px; color: var(--text-muted); }
+  .upload-hint strong { color: var(--accent); font-weight: 500; }
+
+  /* ── FILE LIST ───────────────────────────────────── */
+  #file-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem; }
+
+  .file-chip {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    animation: slideIn .15s ease;
+  }
+
+  @keyframes slideIn { from { opacity:0; transform: translateY(-6px); } to { opacity:1; transform: translateY(0); } }
+
+  .file-chip .chip-icon {
+    width: 28px;
+    height: 28px;
+    background: var(--navy-50);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .file-chip .chip-icon svg { width: 15px; height: 15px; stroke: var(--accent); fill: none; stroke-width: 1.8; }
+  .file-chip .chip-name { flex: 1; font-weight: 500; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .file-chip .chip-size { color: var(--text-muted); flex-shrink: 0; }
+  .chip-remove {
+    background: none; border: none; cursor: pointer;
+    color: var(--text-muted); padding: 2px;
+    border-radius: 4px; line-height: 1;
+    transition: color .15s;
+    flex-shrink: 0;
+  }
+  .chip-remove:hover { color: var(--danger); }
+
+  /* ── RULES PANEL ─────────────────────────────────── */
+  .rules-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 560px) { .rules-grid { grid-template-columns: 1fr; } }
+
+  .rule-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+  }
+
+  .rule-num {
+    width: 22px;
+    height: 22px;
+    background: var(--navy-700);
+    color: #fff;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .rule-text strong { display: block; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+  .rule-text span { color: var(--text-muted); font-size: 12px; }
+
+  /* ── BUTTON ──────────────────────────────────────── */
+  .btn-run {
+    width: 100%;
+    background: var(--navy-700);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    padding: 14px 24px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--font);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background .2s, transform .1s;
+    letter-spacing: 0.01em;
+    margin-bottom: 2rem;
+  }
+
+  .btn-run:hover:not(:disabled) { background: var(--navy-600); }
+  .btn-run:active:not(:disabled) { transform: scale(0.99); }
+  .btn-run:disabled { background: var(--border); color: var(--text-muted); cursor: not-allowed; }
+  .btn-run svg { width: 18px; height: 18px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── PROGRESS ────────────────────────────────────── */
+  #progress-wrap { margin-bottom: 1.5rem; display: none; }
+
+  .progress-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 6px;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .progress-bar-bg {
+    height: 6px;
+    background: var(--navy-100);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+
+  .progress-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    border-radius: 99px;
+    width: 0%;
+    transition: width .3s ease;
+  }
+
+  /* ── RESULTS ─────────────────────────────────────── */
+  #results { display: none; }
+
+  .results-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1.25rem;
+  }
+
+  .results-header h2 { font-size: 17px; font-weight: 600; }
+
+  .stats-row {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    text-align: center;
+  }
+
+  .stat-card .stat-val { font-size: 26px; font-weight: 600; color: var(--navy-700); line-height: 1; margin-bottom: 4px; }
+  .stat-card .stat-lbl { font-size: 11px; color: var(--text-muted); font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+
+  /* ── FILE RESULT BLOCK ───────────────────────────── */
+  .result-block {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+  }
+
+  .result-block-header {
+    background: var(--navy-900);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #fff;
+  }
+
+  .result-block-header .fname { font-size: 14px; font-weight: 500; flex: 1; }
+  .result-block-header .row-count { font-size: 12px; color: var(--navy-200); }
+
+  .result-body { padding: 14px 16px; }
+
+  /* ── LOG TABLE ───────────────────────────────────── */
+  .log-table-wrap { overflow-x: auto; margin-bottom: 12px; }
+
+  table.log-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: var(--mono);
+  }
+
+  table.log-table thead th {
+    background: var(--navy-50);
+    color: var(--navy-700);
+    font-weight: 600;
+    padding: 7px 10px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  table.log-table tbody td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+
+  table.log-table tbody tr:last-child td { border-bottom: none; }
+  table.log-table tbody tr:hover td { background: var(--navy-50); }
+
+  .status-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .pill-warning { background: var(--warning-bg); color: var(--warning); }
+  .pill-danger  { background: var(--danger-bg);  color: var(--danger); }
+  .pill-ok      { background: var(--success-bg); color: var(--success); }
+
+  /* ── DOWNLOAD BUTTONS ────────────────────────────── */
+  .dl-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn-dl {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--font);
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--navy-700);
+    transition: background .15s, border-color .15s;
+    text-decoration: none;
+  }
+
+  .btn-dl:hover { background: var(--navy-50); border-color: var(--navy-300); }
+  .btn-dl.primary { background: var(--navy-700); color: #fff; border-color: var(--navy-700); }
+  .btn-dl.primary:hover { background: var(--navy-600); border-color: var(--navy-600); }
+  .btn-dl svg { width: 14px; height: 14px; stroke: currentColor; fill: none; stroke-width: 2; }
+
+  /* ── ALERT ───────────────────────────────────────── */
+  .alert {
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    font-size: 13px;
+    margin-bottom: 12px;
+    border-left: 3px solid;
+  }
+
+  .alert-ok      { background: var(--success-bg); color: var(--success);  border-color: var(--success); }
+  .alert-warning { background: var(--warning-bg); color: var(--warning);  border-color: var(--warning); }
+  .alert-error   { background: var(--danger-bg);  color: var(--danger);   border-color: var(--danger); }
+
+  /* ── FOOTER ──────────────────────────────────────── */
+  footer {
+    background: var(--navy-900);
+    border-top: 1px solid var(--navy-700);
+    padding: 14px 2rem;
+    text-align: center;
+    font-size: 11px;
+    color: var(--navy-300);
+  }
+
+  /* ── SPINNER ─────────────────────────────────────── */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin .7s linear infinite; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-mark">
+    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M9 17H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v2M9 17l2 2 4-4m3 4H13a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2z"/>
+    </svg>
+  </div>
+  <div>
+    <h1>Validador CSV</h1>
+    <div class="subtitle">Processamento e validação de arquivos</div>
+  </div>
+  <span class="badge-brand">Burberry</span>
+</header>
+
+<main>
+
+  <!-- Upload -->
+  <p class="section-label">1 — Selecionar arquivos</p>
+  <div class="upload-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".csv" multiple>
+    <div class="upload-icon">
+      <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    </div>
+    <p class="upload-title">Arraste os CSVs aqui</p>
+    <p class="upload-hint">ou <strong>clique para selecionar</strong> — múltiplos arquivos aceitos</p>
+  </div>
+
+  <div id="file-list"></div>
+
+  <!-- Rules -->
+  <p class="section-label">2 — Regras aplicadas automaticamente</p>
+  <div class="rules-grid">
+    <div class="rule-card">
+      <div class="rule-num">1</div>
+      <div class="rule-text">
+        <strong>Coluna B — Delivery</strong>
+        <span>Identifica linhas sem entrega informada</span>
+      </div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-num">2</div>
+      <div class="rule-text">
+        <strong>Coluna AB — NCM Code</strong>
+        <span>Remove sufixo "EX" do código NCM</span>
+      </div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-num">3</div>
+      <div class="rule-text">
+        <strong>Coluna Z — Valor Total</strong>
+        <span>Recalcula e corrige a soma da nota fiscal</span>
+      </div>
+    </div>
+    <div class="rule-card">
+      <div class="rule-num">4</div>
+      <div class="rule-text">
+        <strong>Coluna G — Numérica</strong>
+        <span>Normaliza valores monetários para número</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Run button -->
+  <button class="btn-run" id="btn-run" disabled>
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg>
+    Processar arquivos
+  </button>
+
+  <!-- Progress -->
+  <div id="progress-wrap">
+    <div class="progress-label">
+      <span id="progress-text">Processando…</span>
+      <span id="progress-pct">0%</span>
+    </div>
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progress-fill"></div></div>
+  </div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="results-header">
+      <h2>Resultado da validação</h2>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-val" id="st-files">0</div><div class="stat-lbl">Arquivos</div></div>
+      <div class="stat-card"><div class="stat-val" id="st-rows">0</div><div class="stat-lbl">Linhas processadas</div></div>
+      <div class="stat-card"><div class="stat-val" id="st-issues">0</div><div class="stat-lbl">Ocorrências</div></div>
+    </div>
+    <div id="results-body"></div>
+  </div>
+
+</main>
+
+<footer>Validador CSV Burberry — Processamento 100% local, nenhum dado é enviado para servidores externos.</footer>
+
+<script>
+const dropZone   = document.getElementById('drop-zone');
+const fileInput  = document.getElementById('file-input');
+const fileList   = document.getElementById('file-list');
+const btnRun     = document.getElementById('btn-run');
+const progressWrap = document.getElementById('progress-wrap');
+const progressFill = document.getElementById('progress-fill');
+const progressText = document.getElementById('progress-text');
+const progressPct  = document.getElementById('progress-pct');
+const resultsDiv   = document.getElementById('results');
+const resultsBody  = document.getElementById('results-body');
+
+let selectedFiles = [];
+
+// ─── Drag & drop ────────────────────────────────────────────────────────────
+['dragenter','dragover'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.add('dragover'); }));
+['dragleave','drop'].forEach(e => dropZone.addEventListener(e, ev => { ev.preventDefault(); dropZone.classList.remove('dragover'); }));
+dropZone.addEventListener('drop', ev => addFiles(ev.dataTransfer.files));
+fileInput.addEventListener('change', () => addFiles(fileInput.files));
+
+function addFiles(rawFiles) {
+  const csvs = Array.from(rawFiles).filter(f => f.name.toLowerCase().endsWith('.csv'));
+  csvs.forEach(f => {
+    if (!selectedFiles.find(x => x.name === f.name && x.size === f.size)) selectedFiles.push(f);
+  });
+  renderFileList();
+}
+
+function removeFile(idx) {
+  selectedFiles.splice(idx, 1);
+  renderFileList();
+}
+
+function fmtSize(bytes) {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1048576) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1048576).toFixed(1) + ' MB';
+}
+
+function renderFileList() {
+  fileList.innerHTML = '';
+  selectedFiles.forEach((f, i) => {
+    const chip = document.createElement('div');
+    chip.className = 'file-chip';
+    chip.innerHTML = `
+      <div class="chip-icon">
+        <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+      </div>
+      <span class="chip-name">${f.name}</span>
+      <span class="chip-size">${fmtSize(f.size)}</span>
+      <button class="chip-remove" title="Remover" onclick="removeFile(${i})">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>`;
+    fileList.appendChild(chip);
+  });
+  btnRun.disabled = selectedFiles.length === 0;
+}
+
+// ─── Numeric cleaner (mirrors Python clean_numeric) ─────────────────────────
+function cleanNumeric(val) {
+  if (val === null || val === undefined) return 0;
+  val = String(val).trim().replace('R$','').trim();
+  if (!val) return 0;
+  if (val.includes(',') && val.includes('.')) {
+    if (val.lastIndexOf(',') > val.lastIndexOf('.')) val = val.replace(/\./g,'').replace(',','.');
+    else val = val.replace(/,/g,'');
+  } else if (val.includes(',')) {
+    val = val.replace(',','.');
+  }
+  const n = parseFloat(val);
+  return isNaN(n) ? 0 : n;
+}
+
+// ─── Process one CSV ─────────────────────────────────────────────────────────
+function processCSV(rawText) {
+  const parsed = Papa.parse(rawText, { skipEmptyLines: false });
+  const rows = parsed.data;
+  if (rows.length < 1) return { error: 'Arquivo vazio ou não pôde ser lido.' };
+
+  // Detect separator already done by PapaParse; reconstruct with meta.delimiter
+  const headers = rows[0];
+  const dataRows = rows.slice(1);
+
+  if (headers.length < 28) {
+    return { error: `Colunas insuficientes: encontradas ${headers.length}, necessário mínimo 28 (até coluna AB).` };
+  }
+
+  const logMessages = dataRows.map(() => []);
+  const colsToSum = [8,9,10,11,17,18,20,21,22,23]; // I,J,K,L,R,S,U,V,W,X
+
+  // Rule 4 — Col G (idx 6): convert to numeric
+  dataRows.forEach((row, i) => {
+    row[6] = cleanNumeric(row[6]);
+  });
+
+  // Rule 1 — Col B (idx 1): check delivery
+  dataRows.forEach((row, i) => {
+    const v = String(row[1] ?? '').trim().toLowerCase();
+    if (!v || v === 'nan' || v === '') logMessages[i].push('Sem Delivery Informado');
+  });
+
+  // Rule 2 — Col AB (idx 27): remove EX from NCM
+  dataRows.forEach((row, i) => {
+    if (/EX/i.test(String(row[27] ?? ''))) {
+      logMessages[i].push('NCM limpa, EX removido');
+      row[27] = String(row[27]).replace(/EX/gi,'').trim();
+    }
+  });
+
+  // Rule 3 — Col Z (idx 25): validate total
+  dataRows.forEach((row, i) => {
+    let calcZ = 0;
+    colsToSum.forEach(ci => { calcZ += cleanNumeric(row[ci]); });
+    calcZ = Math.round(calcZ * 100) / 100;
+    const curZ = Math.round(cleanNumeric(row[25]) * 100) / 100;
+    if (Math.abs(calcZ - curZ) > 0.02) {
+      logMessages[i].push('Valor total da Nota incorreto');
+      row[25] = calcZ;
+    }
+  });
+
+  // Build log records
+  const logRecords = [];
+  dataRows.forEach((row, i) => {
+    if (logMessages[i].length > 0) {
+      logRecords.push({
+        colG: row[6],
+        colH: row[7],
+        status: logMessages[i].join('; '),
+        rowNum: i + 2,
+        tags: logMessages[i]
+      });
+    }
+  });
+
+  return {
+    revisedRows: [headers, ...dataRows],
+    logRecords,
+    totalRows: dataRows.length
+  };
+}
+
+// ─── CSV builder ─────────────────────────────────────────────────────────────
+function buildCSV(rows, sep=';', decimal=',') {
+  return rows.map(row => row.map(cell => {
+    let v = String(cell ?? '');
+    // Convert float dot decimals to comma for PT-BR
+    if (!isNaN(cell) && cell !== '' && typeof cell === 'number') {
+      v = cell.toFixed(2).replace('.', decimal);
+    }
+    if (v.includes(sep) || v.includes('"') || v.includes('\n')) v = `"${v.replace(/"/g,'""')}"`;
+    return v;
+  }).join(sep)).join('\r\n');
+}
+
+function download(filename, content, mime='text/csv;charset=utf-8;') {
+  const bom = '\uFEFF';
+  const blob = new Blob([bom + content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 3000);
+}
+
+// ─── Pill helper ─────────────────────────────────────────────────────────────
+function tagClass(tags) {
+  if (tags.includes('Valor total da Nota incorreto')) return 'pill-danger';
+  if (tags.includes('NCM limpa, EX removido')) return 'pill-warning';
+  return 'pill-warning';
+}
+
+// ─── Run ─────────────────────────────────────────────────────────────────────
+btnRun.addEventListener('click', async () => {
+  if (!selectedFiles.length) return;
+
+  btnRun.disabled = true;
+  btnRun.innerHTML = `<svg viewBox="0 0 24 24" class="spin" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10" stroke-dasharray="31.4" stroke-dashoffset="10"/></svg> Processando…`;
+  progressWrap.style.display = 'block';
+  resultsDiv.style.display = 'none';
+  resultsBody.innerHTML = '';
+
+  let totalRows = 0, totalIssues = 0;
+  const allResults = [];
+
+  for (let fi = 0; fi < selectedFiles.length; fi++) {
+    const f = selectedFiles[fi];
+    const pct = Math.round((fi / selectedFiles.length) * 100);
+    progressFill.style.width = pct + '%';
+    progressText.textContent = `Processando ${f.name}…`;
+    progressPct.textContent = pct + '%';
+
+    const text = await f.text().catch(() => null);
+    if (!text) { allResults.push({ name: f.name, error: 'Não foi possível ler o arquivo.' }); continue; }
+
+    const result = processCSV(text);
+    result.name = f.name;
+    allResults.push(result);
+    if (!result.error) {
+      totalRows += result.totalRows;
+      totalIssues += result.logRecords.length;
+    }
+  }
+
+  progressFill.style.width = '100%';
+  progressPct.textContent = '100%';
+  progressText.textContent = 'Concluído!';
+
+  // Render results
+  document.getElementById('st-files').textContent = allResults.filter(r=>!r.error).length;
+  document.getElementById('st-rows').textContent = totalRows.toLocaleString('pt-BR');
+  document.getElementById('st-issues').textContent = totalIssues.toLocaleString('pt-BR');
+
+  allResults.forEach(result => {
+    const block = document.createElement('div');
+    block.className = 'result-block';
+
+    if (result.error) {
+      block.innerHTML = `
+        <div class="result-block-header"><span class="fname">${result.name}</span></div>
+        <div class="result-body"><div class="alert alert-error">⚠ ${result.error}</div></div>`;
+      resultsBody.appendChild(block);
+      return;
+    }
+
+    const baseName = result.name.replace(/\.csv$/i,'');
+    const revisedCSV = buildCSV(result.revisedRows);
+    const logCSV = result.logRecords.length > 0
+      ? buildCSV([
+          [result.revisedRows[0][6], result.revisedRows[0][7], 'Status_Validacao'],
+          ...result.logRecords.map(r => [r.colG, r.colH, r.status])
+        ])
+      : null;
+
+    const hasIssues = result.logRecords.length > 0;
+    const alertHTML = hasIssues
+      ? `<div class="alert alert-warning">Encontradas <strong>${result.logRecords.length}</strong> ocorrência(s) nas ${result.totalRows} linhas.</div>`
+      : `<div class="alert alert-ok">Nenhuma ocorrência encontrada nas ${result.totalRows} linhas.</div>`;
+
+    let tableHTML = '';
+    if (hasIssues) {
+      const previewRows = result.logRecords.slice(0,50);
+      tableHTML = `
+        <div class="log-table-wrap">
+          <table class="log-table">
+            <thead><tr><th>Linha</th><th>${result.revisedRows[0][6] || 'Col G'}</th><th>${result.revisedRows[0][7] || 'Col H'}</th><th>Ocorrência</th></tr></thead>
+            <tbody>
+              ${previewRows.map(r => `
+                <tr>
+                  <td>${r.rowNum}</td>
+                  <td>${r.colG ?? ''}</td>
+                  <td>${r.colH ?? ''}</td>
+                  <td>${r.tags.map(t=>`<span class="status-pill ${tagClass(r.tags)}">${t}</span>`).join(' ')}</td>
+                </tr>`).join('')}
+              ${result.logRecords.length > 50 ? `<tr><td colspan="4" style="text-align:center;color:var(--text-muted);padding:10px">… e mais ${result.logRecords.length - 50} ocorrências no arquivo de Log</td></tr>` : ''}
+            </tbody>
+          </table>
+        </div>`;
+    }
+
+    block.innerHTML = `
+      <div class="result-block-header">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" style="flex-shrink:0"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <span class="fname">${result.name}</span>
+        <span class="row-count">${result.totalRows} linhas · ${result.logRecords.length} ocorrências</span>
+      </div>
+      <div class="result-body">
+        ${alertHTML}
+        ${tableHTML}
+        <div class="dl-row">
+          <button class="btn-dl primary" id="dl-rev-${baseName}">
+            <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Baixar CSV Revisado
+          </button>
+          ${logCSV ? `<button class="btn-dl" id="dl-log-${baseName}">
+            <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Baixar Log
+          </button>` : ''}
+        </div>
+      </div>`;
+
+    resultsBody.appendChild(block);
+
+    document.getElementById(`dl-rev-${baseName}`)?.addEventListener('click', () => {
+      download(`${baseName}_Revisado.csv`, revisedCSV);
+    });
+    if (logCSV) {
+      document.getElementById(`dl-log-${baseName}`)?.addEventListener('click', () => {
+        download(`${baseName}_Log.csv`, logCSV);
+      });
+    }
+  });
+
+  resultsDiv.style.display = 'block';
+  btnRun.disabled = false;
+  btnRun.innerHTML = `<svg viewBox="0 0 24 24" style="width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2"><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8"/></svg> Processar arquivos`;
+  resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+</script>
+</body>
+</html>
