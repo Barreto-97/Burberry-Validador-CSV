@@ -685,7 +685,7 @@ function processCSV(rawText) {
 }
 
 // ─── CSV builder ─────────────────────────────────────────────────────────────
-function buildCSV(rows, sep=';', decimal=',') {
+function buildCSV(rows, sep=';', decimal='.') {
   return rows.map(row => row.map(cell => {
     let v = String(cell ?? '');
     // Convert float dot decimals to comma for PT-BR
