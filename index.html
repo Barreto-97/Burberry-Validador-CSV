@@ -617,7 +617,7 @@ function cleanNumeric(val) {
 
 // ─── Process one CSV ─────────────────────────────────────────────────────────
 function processCSV(rawText) {
-  const parsed = Papa.parse(rawText, { skipEmptyLines: false });
+  const parsed = Papa.parse(rawText, { skipEmptyLines: 'greedy' });
   const rows = parsed.data;
   if (rows.length < 1) return { error: 'Arquivo vazio ou não pôde ser lido.' };
 
