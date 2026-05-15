@@ -643,11 +643,35 @@ function processCSV(rawText) {
     if (!v || v === 'nan' || v === '') logMessages[i].push('Sem Delivery Informado');
   });
 
-  // Rule 2 — Col AB (idx 27): remove EX from NCM
+// Rule 2 — Col AB (idx 27): remove EX from NCM
   dataRows.forEach((row, i) => {
     if (/EX/i.test(String(row[27] ?? ''))) {
       logMessages[i].push('NCM limpa, EX removido');
       row[27] = String(row[27]).replace(/EX/gi,'').trim();
+    }
+  });
+
+  // ─── NOVA REGRA: Desmembramento do COFINS (Coluna X e S) ───────────
+  dataRows.forEach((row, i) => {
+    let zOrig = cleanNumeric(row[25]); // Total NF (Coluna Z)
+    let xOrig = cleanNumeric(row[23]); // COFINS (Coluna X)
+
+    // Calcula 10,25% sobre o Total NF original
+    let calc1025 = Math.round((zOrig * 0.1025) * 100) / 100;
+    
+    // Verifica se a diferença entre o cálculo e o COFINS atual é 0.00 ou 0.01
+    if (Math.abs(calc1025 - xOrig) <= 0.01) {
+      
+      // O novo COFINS passa a ser calculado a 9,65%
+      let xNew = Math.round((zOrig * 0.0965) * 100) / 100;
+      
+      // A diferença (Majoração) vai para a Coluna S [Vl.COF.Maj]
+      let sNew = Math.round((xOrig - xNew) * 100) / 100;
+      
+      row[23] = xNew; // Atualiza Coluna X
+      row[18] = sNew; // Atualiza Coluna S
+      
+      logMessages[i].push('COFINS desmembrado (9,65% e Majoração)');
     }
   });
 
