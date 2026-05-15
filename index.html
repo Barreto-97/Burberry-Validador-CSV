@@ -675,16 +675,6 @@ function processCSV(rawText) {
       logMessages[i].push('COFINS desmembrado (9,65% e Majoração)');
     }
   });
-      
-      // A diferença (Majoração) vai para a Coluna S [Vl.COF.Maj]
-      let sNew = Math.round((xOrig - xNew) * 100) / 100;
-      
-      row[23] = xNew; // Atualiza Coluna X
-      row[18] = sNew; // Atualiza Coluna S
-      
-      logMessages[i].push('COFINS desmembrado (9,65% e Majoração)');
-    }
-  });
 
   // Rule 3 — Col Z (idx 25): validate total
   dataRows.forEach((row, i) => {
