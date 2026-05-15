@@ -651,19 +651,30 @@ function processCSV(rawText) {
     }
   });
 
-  // ─── NOVA REGRA: Desmembramento do COFINS (Coluna X e S) ───────────
+// ─── NOVA REGRA: Desmembramento do COFINS (Coluna X e S) ───────────
   dataRows.forEach((row, i) => {
-    let zOrig = cleanNumeric(row[25]); // Total NF (Coluna Z)
-    let xOrig = cleanNumeric(row[23]); // COFINS (Coluna X)
+    // A base de cálculo correta do COFINS é o CIF (FOB[8] + Freight[9] + Insurance[10])
+    let baseCofins = cleanNumeric(row[8]) + cleanNumeric(row[9]) + cleanNumeric(row[10]);
+    let xOrig = cleanNumeric(row[23]); // COFINS original (Coluna X)
 
-    // Calcula 10,25% sobre o Total NF original
-    let calc1025 = Math.round((zOrig * 0.1025) * 100) / 100;
+    // Calcula 10,25% sobre a base (CIF)
+    let calc1025 = Math.round((baseCofins * 0.1025) * 100) / 100;
     
-    // Verifica se a diferença entre o cálculo e o COFINS atual é 0.00 ou 0.01
-    if (Math.abs(calc1025 - xOrig) <= 0.01) {
+    // Verifica se a diferença entre o cálculo a 10,25% e o COFINS atual é mínima
+    if (Math.abs(calc1025 - xOrig) <= 0.02) {
       
-      // O novo COFINS passa a ser calculado a 9,65%
-      let xNew = Math.round((zOrig * 0.0965) * 100) / 100;
+      // O novo COFINS passa a ser calculado a 9,65% da Base
+      let xNew = Math.round((baseCofins * 0.0965) * 100) / 100;
+      
+      // A diferença (Majoração) vai para a Coluna S [Vl.COF.Maj]
+      let sNew = Math.round((xOrig - xNew) * 100) / 100;
+      
+      row[23] = xNew; // Atualiza Coluna X
+      row[18] = sNew; // Atualiza Coluna S
+      
+      logMessages[i].push('COFINS desmembrado (9,65% e Majoração)');
+    }
+  });
       
       // A diferença (Majoração) vai para a Coluna S [Vl.COF.Maj]
       let sNew = Math.round((xOrig - xNew) * 100) / 100;
